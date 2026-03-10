@@ -65,5 +65,5 @@ jobs:
           DB_PORT: ${{ secrets.DB_PORT }}
           PORT: ${{ secrets.PORT }}
         run: |
-          docker-compose pull
+          docker compose pull
           docker compose up -d

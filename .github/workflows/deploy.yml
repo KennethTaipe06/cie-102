@@ -1,57 +1,64 @@
 name: CI/CD Pipeline
 
 on:
-    push:
-        branches: [main, master]
+  push:
+    branches: [main, master]
 
 env:
-    REGISTRY: ghcr.io
-    IMAGE_NAME: ${{ github.repository }}
+  REGISTRY: ghcr.io
 
 jobs:
-    build:
-        name: Build and Push Image
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
-            packages: write
+  build:
+    name: Build and Push Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-            - name: Log in to the Container registry
-              uses: docker/login-action@v3
-              with:
-                  registry: ${{ env.REGISTRY }}
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Lowercase repository name
+        run: |
+          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
 
-            - name: Build and push Docker image
-              uses: docker/build-push-action@v5
-              with:
-                  context: ./data/api
-                  push: true
-                  tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    deploy:
-        name: Deploy to Self-Hosted
-        needs: build
-        runs-on: self-hosted
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./data/api
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
+  deploy:
+    name: Deploy to Self-Hosted
+    needs: build
+    runs-on: self-hosted
 
-            - name: Log in to the Container registry
-              uses: docker/login-action@v3
-              with:
-                  registry: ${{ env.REGISTRY }}
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-            - name: Pull and Restart Containers
-              run: |
-                  cd data/api
-                  docker-compose pull
-                  docker-compose up -d
+      - name: Lowercase repository name
+        run: |
+          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and Restart Containers
+        run: |
+          cd data/api
+          docker-compose pull
+          docker-compose up -d
